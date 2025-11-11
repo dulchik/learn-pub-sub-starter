@@ -3,11 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
+	"github.com/dulchik/learn-pub-sub-starter/internal/pubsub"
 	"github.com/dulchik/learn-pub-sub-starter/internal/routing"
-	"github.com/dulchik/learn-pub-sub-starter/cmd/internal/pubsub"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -21,20 +19,21 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	rabbitChan, err := conn.Channel()
+	publishCh, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("could not get the channel from RabbitMQ: %v", err)
+		log.Fatalf("could not create channel: %v", err)
 	}
 
-	err = pubsub.PublishJSON(rabbitChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+	err = pubsub.PublishJSON(
+		publishCh,
+		routing.ExchangePerilDirect,
+		routing.PauseKey,
+		routing.PlayingState{
+			IsPaused: true,
+		},
+	)
 	if err != nil {
-		log.Fatalf("could not publish json: %v", err)
+		log.Printf("could not publish time: %v", err)
 	}
-
-	// wait for ctrl+c
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("RabbitMQ connection closed.")
-
+	fmt.Println("Pause message sent!")
 }
